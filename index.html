@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Teachable Machine - Image Classifier (Upload)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; max-width:900px; margin:32px auto; padding:16px; line-height:1.4; }
+    h1 { font-size:1.3rem; margin-bottom:4px; }
+    .card { border:1px solid #e6e6e6; border-radius:12px; padding:16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); }
+    .controls { display:flex; gap:8px; align-items:center; margin-top:12px; }
+    input[type=file] { display:block; }
+    #preview { max-width:360px; max-height:360px; object-fit:contain; border-radius:8px; border:1px dashed #ddd; padding:8px; background:#fafafa; }
+    #results { margin-top:12px; }
+    .pred { display:flex; justify-content:space-between; padding:6px 8px; border-radius:8px; margin-bottom:6px; background:#fff; border:1px solid #f0f0f0; }
+    .small { font-size:0.9rem; color:#666; }
+    #loader { display:inline-block; margin-left:8px; color:#666; font-size:0.9rem; }
+    footer { margin-top:18px; font-size:0.85rem; color:#666; }
+    button { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Teachable Machine — Image Classifier (Upload)</h1>
+    <div class="small">Upload an image, and get predictions from your model.</div>
+
+    <div style="margin-top:14px;">
+      <div class="small" style="margin-bottom:8px;">
+        <strong>Model URL:</strong><br>
+        <code>https://teachablemachine.withgoogle.com/models/5WXjJMNGM/</code>
+      </div>
+
+      <div class="controls">
+        <input id="imageUpload" type="file" accept="image/*" />
+        <button id="loadModelBtn">Load Model</button>
+        <span id="loader" style="display:none;">Loading model…</span>
+      </div>
+
+      <div style="display:flex; gap:18px; margin-top:16px; flex-wrap:wrap;">
+        <div>
+          <img id="preview" alt="Image preview" src="" />
+        </div>
+        <div style="flex:1; min-width:260px;">
+          <div id="results">
+            <div class="small">Predictions will appear here.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button id="predictBtn" disabled>Predict</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+
+      <footer>
+        Copy this HTML to any static host like GitHub Pages, Netlify, or embed in Google Sites via an iframe.
+      </footer>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script>
+    const modelURL = "https://teachablemachine.withgoogle.com/models/5WXjJMNGM/";
+    let model, maxPredictions;
+
+    const imageUpload = document.getElementById('imageUpload');
+    const preview = document.getElementById('preview');
+    const resultsDiv = document.getElementById('results');
+    const predictBtn = document.getElementById('predictBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const loadModelBtn = document.getElementById('loadModelBtn');
+    const loader = document.getElementById('loader');
+
+    async function loadModel() {
+      loader.style.display = 'inline-block';
+      predictBtn.disabled = true;
+      try {
+        const modelURLjson = modelURL + "model.json";
+        const metadataURL = modelURL + "metadata.json";
+        model = await tmImage.load(modelURLjson, metadataURL);
+        maxPredictions = model.getTotalClasses();
+        loader.style.display = 'none';
+        predictBtn.disabled = false;
+        resultsDiv.innerHTML = `<div class="small">Loaded model with ${maxPredictions} classes.</div>`;
+      } catch (err) {
+        loader.style.display = 'none';
+        resultsDiv.innerHTML = `<div style="color:red">Error loading model — check console.</div>`;
+        console.error(err);
+      }
+    }
+
+    imageUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      resultsDiv.innerHTML = `<div class="small">Image selected — click “Predict”.</div>`;
+    });
+
+    clearBtn.addEventListener('click', () => {
+      preview.src = "";
+      imageUpload.value = "";
+      resultsDiv.innerHTML = "";
+    });
+
+    predictBtn.addEventListener('click', async () => {
+      if (!model) {
+        resultsDiv.innerHTML = `<div style="color:red">Model not loaded.</div>`;
+        return;
+      }
+      if (!preview.src) {
+        resultsDiv.innerHTML = `<div style="color:red">No image to predict.</div>`;
+        return;
+      }
+      resultsDiv.innerHTML = `<div class="small">Predicting…</div>`;
+      try {
+        const predictions = await model.predict(preview, false);
+        predictions.sort((a, b) => b.probability - a.probability);
+        resultsDiv.innerHTML = "";
+        predictions.slice(0, 3).forEach(pred => {
+          const row = document.createElement('div');
+          row.className = 'pred';
+          const label = document.createElement('div');
+          label.textContent = pred.className;
+          const prob = document.createElement('div');
+          prob.textContent = (pred.probability * 100).toFixed(1) + '%';
+          row.appendChild(label);
+          row.appendChild(prob);
+          resultsDiv.appendChild(row);
+        });
+      } catch (err) {
+        resultsDiv.innerHTML = `<div style="color:red">Prediction error.</div>`;
+        console.error(err);
+      }
+    });
+
+    loadModelBtn.addEventListener('click', loadModel);
+
+  </script>
+</body>
+</html>
