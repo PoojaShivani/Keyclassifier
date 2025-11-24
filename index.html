@@ -134,11 +134,74 @@
         console.error(err);
       }
     });
+    <!-- Webcam Section -->
+<div style="margin-top:20px;">
+  <h3>Live Webcam Classification</h3>
+  <button id="startWebcamBtn">Start Webcam</button>
+  <button id="stopWebcamBtn" disabled>Stop Webcam</button>
+
+  <div style="margin-top:12px;">
+    <div id="webcam-container"></div>
+    <div id="webcam-results" class="small">Webcam predictions will appear here.</div>
+  </div>
+</div>
+
 
     loadModelBtn.addEventListener('click', loadModel);
 
+// ─── Webcam Feature ─────────────────────────────────────────────
+let webcam;
+const startWebcamBtn = document.getElementById("startWebcamBtn");
+const stopWebcamBtn = document.getElementById("stopWebcamBtn");
+const webcamResults = document.getElementById("webcam-results");
+
+startWebcamBtn.addEventListener("click", async () => {
+  if (!model) {
+    webcamResults.innerHTML = `<div style="color:red">Load the model first.</div>`;
+    return;
+  }
+
+  webcam = new tmImage.Webcam(300, 300, true); // width, height, flip
+  await webcam.setup();
+  await webcam.play();
+
+  document.getElementById("webcam-container").innerHTML = "";
+  document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+  startWebcamBtn.disabled = true;
+  stopWebcamBtn.disabled = false;
+
+  window.requestAnimationFrame(loop);
+});
+
+stopWebcamBtn.addEventListener("click", () => {
+  if (webcam) webcam.stop();
+  startWebcamBtn.disabled = false;
+  stopWebcamBtn.disabled = true;
+  webcamResults.innerHTML = `Webcam stopped.`;
+});
+
+async function loop() {
+  if (!webcam || stopWebcamBtn.disabled) return;
+  webcam.update();
+  await predictWebcam();
+  window.requestAnimationFrame(loop);
+}
+
+async function predictWebcam() {
+  const predictions = await model.predict(webcam.canvas);
+  predictions.sort((a, b) => b.probability - a.probability);
+
+  webcamResults.innerHTML = "";
+  predictions.slice(0, 3).forEach(pred => {
+    const div = document.createElement("div");
+    div.textContent = `${pred.className}: ${(pred.probability * 100).toFixed(1)}%`;
+    webcamResults.appendChild(div);
+  });
+}
 
   </script>
 </body>
 </html>
+
 
