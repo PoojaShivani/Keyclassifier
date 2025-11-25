@@ -1,207 +1,213 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Teachable Machine - Image Classifier (Upload)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; max-width:900px; margin:32px auto; padding:16px; line-height:1.4; }
-    h1 { font-size:1.3rem; margin-bottom:4px; }
-    .card { border:1px solid #e6e6e6; border-radius:12px; padding:16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); }
-    .controls { display:flex; gap:8px; align-items:center; margin-top:12px; }
-    input[type=file] { display:block; }
-    #preview { max-width:360px; max-height:360px; object-fit:contain; border-radius:8px; border:1px dashed #ddd; padding:8px; background:#fafafa; }
-    #results { margin-top:12px; }
-    .pred { display:flex; justify-content:space-between; padding:6px 8px; border-radius:8px; margin-bottom:6px; background:#fff; border:1px solid #f0f0f0; }
-    .small { font-size:0.9rem; color:#666; }
-    #loader { display:inline-block; margin-left:8px; color:#666; font-size:0.9rem; }
-    footer { margin-top:18px; font-size:0.85rem; color:#666; }
-    button { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Teachable Machine — Image Classifier (Upload)</h1>
-    <div class="small">Upload an image, and get predictions from your model.</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teachable Machine - Image Classifier (Upload + Webcam)</title>
 
-    <div style="margin-top:14px;">
-      <div class="small" style="margin-bottom:8px;">
-        <strong>Model URL:</strong><br>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+        max-width: 900px;
+        margin: 32px auto;
+        padding: 16px;
+      }
+      .card {
+        border: 1px solid #e6e6e6;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+      }
+      #preview {
+        max-width: 360px;
+        max-height: 360px;
+        object-fit: contain;
+        border: 1px dashed #ddd;
+        padding: 8px;
+        background: #fafafa;
+        border-radius: 8px;
+      }
+      .pred {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid #efefef;
+        margin-bottom: 6px;
+      }
+      .small {
+        font-size: 0.9rem;
+        color: #666;
+      }
+      button {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        background: #f7f7f7;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h1>Teachable Machine — Image Classifier (Upload + Webcam)</h1>
+
+      <div class="small">Upload an image or use webcam, and get predictions from the model.</div>
+
+      <div class="small" style="margin-top: 10px">
+        <strong>Model URL:</strong><br />
         <code>https://teachablemachine.withgoogle.com/models/2i4VqXCjp/</code>
       </div>
 
-      <div class="controls">
+      <div class="controls" style="margin-top: 14px">
         <input id="imageUpload" type="file" accept="image/*" />
         <button id="loadModelBtn">Load Model</button>
-        <span id="loader" style="display:none;">Loading model…</span>
+        <span id="loader" style="display: none">Loading…</span>
       </div>
 
-      <div style="display:flex; gap:18px; margin-top:16px; flex-wrap:wrap;">
-        <div>
-          <img id="preview" alt="Image preview" src="" />
-        </div>
-        <div style="flex:1; min-width:260px;">
-          <div id="results">
-            <div class="small">Predictions will appear here.</div>
-          </div>
+      <div style="margin-top: 16px; display: flex; gap: 18px; flex-wrap: wrap">
+        <div><img id="preview" src="" alt="" /></div>
+        <div style="flex: 1">
+          <div id="results" class="small">Predictions will appear here.</div>
         </div>
       </div>
 
-      <div style="margin-top:12px;">
+      <div style="margin-top: 14px">
         <button id="predictBtn" disabled>Predict</button>
         <button id="clearBtn">Clear</button>
       </div>
 
-      <footer>
-        Copy this HTML to any static host like GitHub Pages, Netlify, or embed in Google Sites via an iframe.
-      </footer>
+      <!-- Webcam Section -->
+      <div style="margin-top: 32px">
+        <h3>Live Webcam Classification</h3>
+        <button id="startWebcamBtn">Start Webcam</button>
+        <button id="stopWebcamBtn" disabled>Stop Webcam</button>
+
+        <div style="margin-top: 12px">
+          <div id="webcam-container"></div>
+          <div id="webcam-results" class="small">
+            Webcam predictions will appear here.
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-  <!-- Load TensorFlow.js first -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
-  <script>
-    const modelURL = "https://teachablemachine.withgoogle.com/models/2i4VqXCjp/";
-    let model, maxPredictions;
 
-    const imageUpload = document.getElementById('imageUpload');
-    const preview = document.getElementById('preview');
-    const resultsDiv = document.getElementById('results');
-    const predictBtn = document.getElementById('predictBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const loadModelBtn = document.getElementById('loadModelBtn');
-    const loader = document.getElementById('loader');
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 
-    async function loadModel() {
-      loader.style.display = 'inline-block';
-      predictBtn.disabled = true;
-      try {
-        const modelURLjson = modelURL + "model.json";
-        const metadataURL = modelURL + "metadata.json";
-        model = await tmImage.load(modelURLjson, metadataURL);
-        maxPredictions = model.getTotalClasses();
-        loader.style.display = 'none';
-        predictBtn.disabled = false;
-        resultsDiv.innerHTML = `<div class="small">Loaded model with ${maxPredictions} classes.</div>`;
-      } catch (err) {
-        loader.style.display = 'none';
-        resultsDiv.innerHTML = `<div style="color:red">Error loading model — check console.</div>`;
-        console.error(err);
+    <script>
+      const modelURL =
+        "https://teachablemachine.withgoogle.com/models/2i4VqXCjp/";
+      let model, maxPredictions, webcam;
+
+      const imageUpload = document.getElementById("imageUpload");
+      const preview = document.getElementById("preview");
+      const resultsDiv = document.getElementById("results");
+      const predictBtn = document.getElementById("predictBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const loadModelBtn = document.getElementById("loadModelBtn");
+      const loader = document.getElementById("loader");
+
+      async function loadModel() {
+        loader.style.display = "inline-block";
+        predictBtn.disabled = true;
+
+        try {
+          const modelURLjson = modelURL + "model.json";
+          const metadataURL = modelURL + "metadata.json";
+          model = await tmImage.load(modelURLjson, metadataURL);
+          maxPredictions = model.getTotalClasses();
+          resultsDiv.innerHTML = `<div class="small">Model loaded (${maxPredictions} classes)</div>`;
+          predictBtn.disabled = false;
+        } catch (err) {
+          resultsDiv.innerHTML =
+            "<span style='color:red'>Failed to load model.</span>";
+          console.error(err);
+        }
+        loader.style.display = "none";
       }
-    }
+      loadModelBtn.addEventListener("click", loadModel);
+      // -------- IMAGE UPLOAD --------
+      imageUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        preview.src = URL.createObjectURL(file);
+        resultsDiv.innerHTML = `<div class="small">Image selected. Click Predict.</div>`;
+      });
 
-    imageUpload.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      preview.src = url;
-      resultsDiv.innerHTML = `<div class="small">Image selected — click “Predict”.</div>`;
-    });
+      clearBtn.addEventListener("click", () => {
+        preview.src = "";
+        imageUpload.value = "";
+        resultsDiv.innerHTML = "";
+      });
 
-    clearBtn.addEventListener('click', () => {
-      preview.src = "";
-      imageUpload.value = "";
-      resultsDiv.innerHTML = "";
-    });
-
-    predictBtn.addEventListener('click', async () => {
-      if (!model) {
-        resultsDiv.innerHTML = `<div style="color:red">Model not loaded.</div>`;
-        return;
-      }
-      if (!preview.src) {
-        resultsDiv.innerHTML = `<div style="color:red">No image to predict.</div>`;
-        return;
-      }
-      resultsDiv.innerHTML = `<div class="small">Predicting…</div>`;
-      try {
-        const predictions = await model.predict(preview, false);
+      predictBtn.addEventListener("click", async () => {
+        if (!model) return alert("Load model first!");
+        if (!preview.src) return;
+        const predictions = await model.predict(preview);
         predictions.sort((a, b) => b.probability - a.probability);
         resultsDiv.innerHTML = "";
-        predictions.slice(0, 3).forEach(pred => {
-          const row = document.createElement('div');
-          row.className = 'pred';
-          const label = document.createElement('div');
-          label.textContent = pred.className;
-          const prob = document.createElement('div');
-          prob.textContent = (pred.probability * 100).toFixed(1) + '%';
-          row.appendChild(label);
-          row.appendChild(prob);
-          resultsDiv.appendChild(row);
+        predictions.slice(0, 3).forEach((pred) => {
+          resultsDiv.innerHTML += `
+      <div class="pred">
+        <div>${pred.className}</div>
+        <div>${(pred.probability * 100).toFixed(1)}%</div>
+      </div>`;
         });
-      } catch (err) {
-        resultsDiv.innerHTML = `<div style="color:red">Prediction error.</div>`;
-        console.error(err);
+      });
+
+      // -------- WEBCAM --------
+      const startWebcamBtn = document.getElementById("startWebcamBtn");
+      const stopWebcamBtn = document.getElementById("stopWebcamBtn");
+      const webcamResults = document.getElementById("webcam-results");
+
+      startWebcamBtn.addEventListener("click", async () => {
+        if (!model) return alert("Load model first!");
+
+        webcam = new tmImage.Webcam(300, 300, true);
+        await webcam.setup();
+        await webcam.play();
+
+        document.getElementById("webcam-container").innerHTML = "";
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+        startWebcamBtn.disabled = true;
+        stopWebcamBtn.disabled = false;
+
+        window.requestAnimationFrame(webcamLoop);
+      });
+
+      stopWebcamBtn.addEventListener("click", () => {
+        if (webcam) webcam.stop();
+
+        startWebcamBtn.disabled = false;
+        stopWebcamBtn.disabled = true;
+        webcamResults.innerHTML = "Webcam stopped.";
+      });
+
+      async function webcamLoop() {
+        if (!webcam || stopWebcamBtn.disabled) return;
+
+        webcam.update();
+        await predictWebcam();
+
+        window.requestAnimationFrame(webcamLoop);
       }
-    });
-    <!-- Webcam Section -->
-<div style="margin-top:20px;">
-  <h3>Live Webcam Classification</h3>
-  <button id="startWebcamBtn">Start Webcam</button>
-  <button id="stopWebcamBtn" disabled>Stop Webcam</button>
 
-  <div style="margin-top:12px;">
-    <div id="webcam-container"></div>
-    <div id="webcam-results" class="small">Webcam predictions will appear here.</div>
-  </div>
-</div>
+      async function predictWebcam() {
+        const predictions = await model.predict(webcam.canvas);
+        predictions.sort((a, b) => b.probability - a.probability);
 
-
-    loadModelBtn.addEventListener('click', loadModel);
-
-// ─── Webcam Feature ─────────────────────────────────────────────
-let webcam;
-const startWebcamBtn = document.getElementById("startWebcamBtn");
-const stopWebcamBtn = document.getElementById("stopWebcamBtn");
-const webcamResults = document.getElementById("webcam-results");
-
-startWebcamBtn.addEventListener("click", async () => {
-  if (!model) {
-    webcamResults.innerHTML = `<div style="color:red">Load the model first.</div>`;
-    return;
-  }
-
-  webcam = new tmImage.Webcam(300, 300, true); // width, height, flip
-  await webcam.setup();
-  await webcam.play();
-
-  document.getElementById("webcam-container").innerHTML = "";
-  document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-  startWebcamBtn.disabled = true;
-  stopWebcamBtn.disabled = false;
-
-  window.requestAnimationFrame(loop);
-});
-
-stopWebcamBtn.addEventListener("click", () => {
-  if (webcam) webcam.stop();
-  startWebcamBtn.disabled = false;
-  stopWebcamBtn.disabled = true;
-  webcamResults.innerHTML = `Webcam stopped.`;
-});
-
-async function loop() {
-  if (!webcam || stopWebcamBtn.disabled) return;
-  webcam.update();
-  await predictWebcam();
-  window.requestAnimationFrame(loop);
-}
-
-async function predictWebcam() {
-  const predictions = await model.predict(webcam.canvas);
-  predictions.sort((a, b) => b.probability - a.probability);
-
-  webcamResults.innerHTML = "";
-  predictions.slice(0, 3).forEach(pred => {
-    const div = document.createElement("div");
-    div.textContent = `${pred.className}: ${(pred.probability * 100).toFixed(1)}%`;
-    webcamResults.appendChild(div);
-  });
-}
-
-  </script>
-</body>
+        webcamResults.innerHTML = "";
+        predictions.slice(0, 3).forEach((pred) => {
+          webcamResults.innerHTML += `${pred.className}: ${(
+            pred.probability * 100
+          ).toFixed(1)}%<br>`;
+        });
+      }
+    </script>
+  </body>
 </html>
-
-
