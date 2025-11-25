@@ -1,2 +1,2 @@
 # Keyclassifier
- AI model to classify clean neighbour
+ AI model for  Masks on and off facial classification
